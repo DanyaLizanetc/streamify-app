@@ -3,7 +3,18 @@ import User from "../models/User.js";
 
 export const protectRoute = async (req, res, next) => {
   try {
-    const token = req.cookies.jwt;
+    // *** ЗМІНА: Читаємо токен із заголовка Authorization ***
+    const authHeader = req.headers.authorization;
+    let token;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]; // Отримуємо токен після "Bearer "
+    } else {
+      // Якщо токен не в заголовку, перевіряємо куки (для зворотної сумісності або якщо ще не всі фронтенди оновлені)
+      // Але основний фокус тепер на заголовку.
+      token = req.cookies.jwt; 
+    }
+    // *** КІНЕЦЬ ЗМІНИ ***
 
     if (!token) {
       return res.status(401).json({ message: "Unauthorized - No token provided" });
