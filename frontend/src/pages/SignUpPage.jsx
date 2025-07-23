@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { ShipWheelIcon } from "lucide-react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom"; // *** ЗМІНА: Оновлено імпорт Link з "react-router-dom" ***
 
 import useSignUp from "../hooks/useSignUp";
+import { signup } from "../lib/api"; // *** ЗМІНА: Імпортуємо функцію signup з api.js ***
+import toast from "react-hot-toast"; // *** ЗМІНА: Імпортуємо toast для повідомлень ***
+import { useNavigate } from "react-router-dom"; // *** ЗМІНА: Імпортуємо useNavigate для перенаправлення ***
+
 
 const SignUpPage = () => {
   const [signupData, setSignupData] = useState({
@@ -14,20 +18,35 @@ const SignUpPage = () => {
   // This is how we did it at first, without using our custom hook
   // const queryClient = useQueryClient();
   // const {
-  //   mutate: signupMutation,
-  //   isPending,
-  //   error,
+  // 	mutate: signupMutation,
+  // 	isPending,
+  // 	error,
   // } = useMutation({
-  //   mutationFn: signup,
-  //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
+  // 	mutationFn: signup,
+  // 	onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
   // });
 
   // This is how we did it using our custom hook - optimized version
   const { isPending, error, signupMutation } = useSignUp();
 
-  const handleSignup = (e) => {
+  const navigate = useNavigate(); // Ініціалізуємо useNavigate
+
+  const handleSignup = async (e) => { // *** ЗМІНА: Робимо функцію асинхронною ***
     e.preventDefault();
-    signupMutation(signupData);
+    try {
+      const response = await signup(signupData); // Викликаємо функцію signup з api.js
+      if (response.success && response.token) { // Перевіряємо успіх та наявність токена
+        localStorage.setItem("token", response.token); // *** ЗМІНА: Зберігаємо токен у localStorage ***
+        toast.success("Account created successfully!");
+        // Після успішної реєстрації, перенаправляємо користувача
+        navigate("/onboarding"); // Зазвичай перенаправляємо на онбординг або головну
+      } else {
+        toast.error(response.message || "Signup failed");
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      toast.error(err.response?.data?.message || "Signup failed");
+    }
   };
 
   return (
@@ -40,10 +59,12 @@ const SignUpPage = () => {
         <div className="w-full lg:w-1/2 p-4 sm:p-8 flex flex-col">
           {/* LOGO */}
           <div className="mb-4 flex items-center justify-start gap-2">
-            <ShipWheelIcon className="size-9 text-primary" />
-            <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-wider">
-              Flow
-            </span>
+            <Link to="/" className="flex items-center gap-2"> {/* *** ЗМІНА: Link to="/" *** */}
+              <ShipWheelIcon className="size-9 text-primary" />
+              <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-wider">
+                Flow
+              </span>
+            </Link>
           </div>
 
           {/* ERROR MESSAGE IF ANY */}
