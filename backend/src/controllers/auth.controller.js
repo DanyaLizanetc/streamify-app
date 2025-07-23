@@ -50,15 +50,10 @@ export async function signup(req, res) {
       expiresIn: "7d",
     });
 
-    res.cookie("jwt", token, {
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  httpOnly: true,
-  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  secure: process.env.NODE_ENV === "production",
-  domain: process.env.NODE_ENV === "production" ? ".onrender.com" : "localhost", // АБО ТВОЯ АКТУАЛЬНА URL
-});
+    // *** ЗМІНА: Видалено встановлення куки, токен повертається у JSON ***
+    res.status(201).json({ success: true, user: newUser, token }); // Додано 'token' до відповіді
+    // *** КІНЕЦЬ ЗМІНИ ***
 
-    res.status(201).json({ success: true, user: newUser });
   } catch (error) {
     console.log("Error in signup controller", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -83,21 +78,69 @@ export async function login(req, res) {
       expiresIn: "7d",
     });
 
-    res.cookie("jwt", token, {
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  httpOnly: true,
-  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  secure: process.env.NODE_ENV === "production",
-  domain: process.env.NODE_ENV === "production" ? ".onrender.com" : "localhost", // АБО ТВОЯ АКТУАЛЬНА URL
-});
+    // *** ЗМІНА: Видалено встановлення куки, токен повертається у JSON ***
+    res.status(200).json({ success: true, user, token }); // Додано 'token' до відповіді
+    // *** КІНЕЦЬ ЗМІНИ ***
 
-    res.status(200).json({ success: true, user });
   } catch (error) {
     console.log("Error in login controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
+export function logout(req, res) {
+  // *** ЗМІНА: Видалено очищення куки ***
+  res.status(200).json({ success: true, message: "Logout successful" });
+  // *** КІНЕЦЬ ЗМІНИ ***
+}
+
+export async function onboard(req, res) {
+  try {
+    const userId = req.user._id;
+
+    const { fullName, bio, nativeLanguage, learningLanguage, location } = req.body;
+
+    if (!fullName || !bio || !nativeLanguage || !learningLanguage || !location) {
+      return res.status(400).json({
+        message: "All fields are required",
+        missingFields: [
+          !fullName && "fullName",
+          !bio && "bio",
+          !nativeLanguage && "nativeLanguage",
+          !learningLanguage && "learningLanguage",
+          !location && "location",
+        ].filter(Boolean),
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...req.body,
+        isOnboarded: true,
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
+
+    try {
+      await upsertStreamUser({
+        id: updatedUser._id.toString(),
+        name: updatedUser.fullName,
+        image: updatedUser.profilePic || "",
+      });
+      console.log(`Stream user updated after onboarding for ${updatedUser.fullName}`);
+    } catch (streamError) {
+      console.log("Error updating Stream user during onboarding:", streamError.message);
+    }
+
+    res.status(200).json({ success: true, user: updatedUser });
+  } catch (error) {
+    console.error("Onboarding error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 export function logout(req, res) {
   res.clearCookie("jwt");
   res.status(200).json({ success: true, message: "Logout successful" });
