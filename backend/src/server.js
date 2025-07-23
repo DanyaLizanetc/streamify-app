@@ -17,7 +17,7 @@ const __dirname = path.resolve();
 
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'https://flow-ku39.onrender.com'],
+    origin: ['http://localhost:5173', 'https://flow-739d.onrender.com'],
     credentials: true,
   })
 );
