@@ -1,20 +1,13 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import User from "../models/user.model.js";
 
 export const protectRoute = async (req, res, next) => {
   try {
-    // *** ЗМІНА: Читаємо токен із заголовка Authorization ***
-    const authHeader = req.headers.authorization;
+    // *** ЗМІНА: Отримуємо токен з заголовка Authorization ***
     let token;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1]; // Отримуємо токен після "Bearer "
-    } else {
-      // Якщо токен не в заголовку, перевіряємо куки (для зворотної сумісності або якщо ще не всі фронтенди оновлені)
-      // Але основний фокус тепер на заголовку.
-      token = req.cookies.jwt; 
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1]; // Токен після "Bearer "
     }
-    // *** КІНЕЦЬ ЗМІНИ ***
 
     if (!token) {
       return res.status(401).json({ message: "Unauthorized - No token provided" });
@@ -33,10 +26,15 @@ export const protectRoute = async (req, res, next) => {
     }
 
     req.user = user;
-
     next();
   } catch (error) {
-    console.log("Error in protectRoute middleware", error);
+    console.log("Error in protectRoute middleware:", error.message); // Логуємо повне повідомлення про помилку
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: "Unauthorized - Token expired" });
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Unauthorized - Invalid token" });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
